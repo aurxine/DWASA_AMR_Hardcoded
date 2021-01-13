@@ -47,6 +47,24 @@ void ReceiveSms()
   }
 }
 
+//Breakdown the messsage into:
+//
+
+
+String Message_Sender_Number = "";
+String Message_Time_Stamp = "";
+String Message = "";
+
+void Break_Message(String msg)
+{
+    int sender_number_index = msg.indexOf("+880");
+    int time_stamp_index = sender_number_index + 22; //rough estimate
+    int message_index = time_stamp_index + 15; // rough estimate
+
+    Message_Sender_Number = msg.substring(sender_number_index, 14);
+    Message_Time_Stamp = msg.substring(time_stamp_index, 14);
+    Message = msg.substring(message_index);
+}
 
 // this variable will count the meter pulses
 // when a certain amount of water passes, the meter will send a pulse through reed switch
@@ -91,12 +109,5 @@ void setup() {
 }
 
 void loop() {
-    SIM800L.println("AT+CMGF=1"); 
-    ReceiveSms();
-    if(SIM800L.available() > 0)
-    {
-        String msg = SIM800L.readString();
-    }
-  
 
 }
