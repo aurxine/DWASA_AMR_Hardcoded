@@ -36,8 +36,8 @@ void SendMessage(String message, String number)
 // For receiving message
 String readMessage()
 {
-  SIM800L.println("AT+CNMI=1,1,0,0,0"); 
-  delay(1000);
+//   SIM800L.println("AT+CNMI=1,1,0,0,0"); 
+//   delay(1000);
 
   SIM800L.println("AT+CMGL=\"REC UNREAD\"\r"); // To get the unread message
 
@@ -71,6 +71,11 @@ void Break_Message(String msg)
     Message_Sender_Number = msg.substring(sender_number_index, 14);
     Message_Time_Stamp = msg.substring(time_stamp_index, 14);
     Message = msg.substring(message_index);
+}
+
+void Delete(String location)
+{
+  SIM800L.println("AT+CMGD="+ location + "\r");
 }
 
 // this variable will count the meter pulses
@@ -123,7 +128,5 @@ void setup() {
 
 void loop() {
 
-void Delete(String location)
-{
-  SIM800L.println("AT+CMGD="+ location + "\r");
 }
+
