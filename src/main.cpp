@@ -78,7 +78,15 @@ void Break_Message(String msg)
     Message = msg.substring(110);
 }
 
-
+bool Execute_Command(String Command)
+{
+  if(Command[0] == 'i')//Command looks like this init:xxxxxx
+  {
+    String initial_water_meter_reading_str = Command.substring(5);
+    int initial_water_meter_reading = initial_water_meter_reading_str.toInt();
+    return true;
+  }
+}
 // this variable will count the meter pulses
 // when a certain amount of water passes, the meter will send a pulse through reed switch
 unsigned long int counter = 0;
