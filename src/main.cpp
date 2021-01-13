@@ -34,17 +34,24 @@ void SendMessage(String message, String number)
 }
 
 // For receiving message
-void ReceiveSms()
+String readMessage()
 {
-  //delay(500);
-  if(Serial.available()) 
+  SIM800L.println("AT+CNMI=1,1,0,0,0"); 
+  delay(1000);
+
+  SIM800L.println("AT+CMGL=\"REC UNREAD\"\r"); // To get the unread message
+
+  //SIM800L.write("AT+CMGL=\"ALL\"\r"); // For All stored messages
+  //Delete("8");
+  //SIM800L.write("AT+CMGR=1\r");
+  String data;
+  if(SIM800L.available()>0)
   {
-    SIM800L.write(Serial.read());
+    data = SIM800L.readString();
+    Serial.println(data);
   }
-  if(SIM800L.available()) 
-  {
-    Serial.write(SIM800L.read());
-  }
+
+  return data;
 }
 
 
@@ -81,22 +88,27 @@ void reset()
 
 
 void setup() {
-    Serial.begin(9600);
-    SIM800L.begin(9600);
-    SIM800L.println("AT+CNMI=1,1,0,0,0"); 
-    pinMode(Hall_Effect_Sensor_pin, INPUT_PULLUP);
+  Serial.begin(9600);
+  SIM800L.begin(9600);
+
+  Serial.println("Initializing...");
+  delay(1000);
+
+  
+  SIM800L.println("AT+CNMI=1,1,0,0,0"); 
+  delay(1000);
+  pinMode(Hall_Effect_Sensor_pin, INPUT_PULLUP);
     // pinMode(Reed_Switch_pin, INPUT_PULLUP);
-    attachInterrupt(Hall_Effect_Sensor_pin, pulse_counter, FALLING);
+  attachInterrupt(Hall_Effect_Sensor_pin, pulse_counter, FALLING);
   
 }
 
 void loop() {
-    SIM800L.println("AT+CMGF=1"); 
-    ReceiveSms();
-    if(SIM800L.available() > 0)
-    {
-        String msg = SIM800L.readString();
-    }
-  
+    
 
+}
+
+void Delete(String location)
+{
+  SIM800L.println("AT+CMGD="+ location + "\r");
 }
