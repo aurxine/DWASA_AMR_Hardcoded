@@ -86,6 +86,15 @@ bool Execute_Command(String Command)
     int initial_water_meter_reading = initial_water_meter_reading_str.toInt();
     return true;
   }
+  else if(Command.indexOf("getwater") > -1) // Command looks like ***getwater***
+  {
+    // send water meter reading
+  }
+  else if(Command[0] == 'r') // Command looks like reset
+  {
+    reset();
+  }
+  
 }
 // this variable will count the meter pulses
 // when a certain amount of water passes, the meter will send a pulse through reed switch
