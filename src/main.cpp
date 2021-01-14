@@ -20,7 +20,7 @@
 
 unsigned long int current_water_meter_reading = 0; // reading on the meter
 int meter_reading_save_address = 0; // starting address of EEPROM where meter reading will be saved
-int flow_per_pulse_save_address = sizeof(unsigned long int); // starting address of EEPROM where flow per pulse will be saved
+int flow_per_pulse_save_address = sizeof(unsigned long int) + 1; // starting address of EEPROM where flow per pulse will be saved
 int flow_per_pulse; // water flow in liters per pulse
 // this variable will count the meter pulses
 // when a certain amount of water passes, the meter will send a pulse through reed switch
@@ -61,26 +61,21 @@ SString Receive_Message()
 {
     String textMessage = "";
 
-    //SIM800L.print("AT+CMGF=1\r");
-    //delay(1000);
-    SIM800L.println("AT+CNMI=1,2,0,0,0\r");  
-    delay(2000);
+    SIM800L.print("AT+CMGF=1\r");
+    delay(500);
 
-    // SIM800L.println("AT+CMGL=\"REC UNREAD\"\r"); // to get the unread message
-    SIM800L.println("AT+CMGF=1\r"); // to get the message stored at location 1
     if(SIM800L.available() > 0)
     {
         textMessage = SIM800L.readString();
         delay(500);
-        Serial.println(textMessage);
-        // Delete_Message("1");
+        // Serial.println(textMessage);
     }
     // Serial.println(textMessage);
 
     SString msg;
     String temp;
     String data = textMessage;
-    int len = data.length(), cnt = 0, cnt1 = 0, cnt2 = 0;
+    int len = data.length(), cnt1 = 0, cnt2 = 0;
 
     bool next_rn = false;
 
@@ -94,7 +89,8 @@ SString Receive_Message()
         // Serial.println(data.substring(i+1,i+2));
         if(data.substring(i+1,i+2) == "8")
         {
-          msg.number = data.substring(i,i+14);
+          msg.number = data.substring(i+3,i+14);
+          i += 14;
         }
             
       }
@@ -148,8 +144,28 @@ SString Receive_Message()
             
     }
     msg.text = data.substring(cnt1, cnt2);
-    // Serial.println(msg.number);
-    // Serial.println(msg.text);
+    // Serial.println(msg.number.length());
+    // Serial.println(msg.text.length());
+
+    if(msg.number.length() > 0)
+    {
+      if(msg.text.length() > 0)
+      {
+        new_message = true;
+      }
+      else
+      {
+        Serial.println("Message received but text missing!");
+        new_message = false;
+        Send_Message("error:blank_message", msg.number);
+      }
+      
+    }
+    else
+    {
+      new_message = false;
+    }
+    
 
     return msg;
 }
@@ -164,13 +180,25 @@ void reset()
     // counter and total water will be reseted
 }
 
+
+boolean isValidNumber(String str){
+   boolean isNum=false;
+   for(byte i=0;i<str.length();i++)
+   {
+       isNum = isDigit(str.charAt(i)) || str.charAt(i) == '+' || str.charAt(i) == '.' || str.charAt(i) == '-';
+       if(!isNum) return false;
+   }
+   return isNum;
+}
+
 bool Execute_Command(String Command)
 {
-  if(Command.indexOf("meter") > -1)//Command looks like this meter:xxxxxx
+  if(isValidNumber(Command))//Command looks like this meter:xxxxxx
   {
-    String initial_water_meter_reading_str = Command.substring(6);
-    current_water_meter_reading = initial_water_meter_reading_str.toInt();
+    String initial_water_meter_reading_str = Command;//.substring(6);
+    current_water_meter_reading = (unsigned long)initial_water_meter_reading_str.toInt();
     EEPROM.put(meter_reading_save_address, current_water_meter_reading);
+    EEPROM.get(meter_reading_save_address, current_water_meter_reading);
     Serial.println(current_water_meter_reading);
     return true;
   }
@@ -185,7 +213,10 @@ bool Execute_Command(String Command)
   else if(Command.indexOf("getwater") > -1) // Command looks like ***getwater***
   {
     // send water meter reading
-    Send_Message("getwater:" + String(current_water_meter_reading), Gateway_Number);
+    // Send_Message("getwater:" + String(current_water_meter_reading), Gateway_Number);
+    String msg = "getwater:" + String(current_water_meter_reading);
+    Serial.println(msg);
+    Send_Message(msg, Message.number);
     return true;
   }
   else if(Command.indexOf("reset") > -1) // Command looks like reset
@@ -195,6 +226,7 @@ bool Execute_Command(String Command)
   }
   else
   {
+    Send_Message("error:invalid_command", Message.number);
     return false;
   }
 }
@@ -247,6 +279,9 @@ void setup() {
 
   Serial.println(current_water_meter_reading);
   Serial.println(flow_per_pulse);
+  // Send_Message(String(current_water_meter_reading), "+8801624593436");
+  // Serial.println(isValidNumber("1233"));
+  // Serial.println(isValidNumber("meter:87428"));
   
 }
 
@@ -254,21 +289,24 @@ void loop()
 {
   Message = Receive_Message();
 
-  Serial.print("Number: ");
-  Serial.print(Message.number);
-  Serial.print(" Text: ");
-  Serial.println(Message.text);
+  // Serial.print("Number: ");
+  // Serial.print(Message.number);
+  // Serial.print(" Text: ");
+  // Serial.println(Message.text);
 
-  // if(new_message)
-  // {
-  //   Serial.print("Received new message!\n");
-  //   Serial.print(Message.number);
-  //   Serial.println(Message.text);
-  // }
-  // else
-  // {
-  //   Serial.println("No new message was received");
-  // }
+  if(new_message)
+  {
+    Serial.print("Received new message!\n");
+    Serial.println(Message.number);
+    Serial.println(Message.text);
+    bool response = Execute_Command(Message.text);
+    if(response)
+    Send_Message("successfull", Message.number);
+  }
+  else
+  {
+    Serial.println("No new message was received");
+  }
   delay(1000);
 }
 
