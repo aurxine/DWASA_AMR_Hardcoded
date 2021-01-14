@@ -22,8 +22,19 @@ unsigned long int current_water_meter_reading = 0; // reading on the meter
 int meter_reading_save_address = 0; // starting address of EEPROM where meter reading will be saved
 int flow_per_pulse_save_address = sizeof(unsigned long int); // starting address of EEPROM where flow per pulse will be saved
 int flow_per_pulse; // water flow in liters per pulse
+// this variable will count the meter pulses
+// when a certain amount of water passes, the meter will send a pulse through reed switch
+unsigned long int counter = 0;
+
+// structur for incoming message and sender's number
+typedef struct SString{
+  String number;
+  String text;
+};
 
 String Gateway_Number = "01313791040"; // Number to which all communication will occur
+SString Message; // this stores the sender's number and the text
+bool new_message = false; //checks if there is a new message
 
 SoftwareSerial SIM800L(9, 8); // new (Rx, Tx) of pro mini
 
@@ -46,44 +57,103 @@ void Send_Message(String message, String number)
 }
 
 // For receiving message
-String Read_Message()
+SString Receive_Message()
 {
-  // SIM800L.println("AT+CNMI=1,1,0,0,0"); 
-  // delay(1000);
+    String textMessage = "";
 
-  // SIM800L.println("AT+CMGL=\"REC UNREAD\"\r"); // To get the unread message
+    //SIM800L.print("AT+CMGF=1\r");
+    //delay(1000);
+    SIM800L.println("AT+CNMI=1,2,0,0,0\r");  
+    delay(2000);
 
-  // SIM800L.write("AT+CMGL=\"ALL\"\r"); // For All stored messages
-  SIM800L.write("AT+CMGR=1\r");
-  String data ;//= "";
-  if(SIM800L.available()>0)
-  {
-    data = SIM800L.readString();
-    // Serial.println(data);
-  }
-  Delete_Message("1");
+    // SIM800L.println("AT+CMGL=\"REC UNREAD\"\r"); // to get the unread message
+    SIM800L.println("AT+CMGF=1\r"); // to get the message stored at location 1
+    if(SIM800L.available() > 0)
+    {
+        textMessage = SIM800L.readString();
+        delay(500);
+        Serial.println(textMessage);
+        // Delete_Message("1");
+    }
+    // Serial.println(textMessage);
 
-  return data;
+    SString msg;
+    String temp;
+    String data = textMessage;
+    int len = data.length(), cnt = 0, cnt1 = 0, cnt2 = 0;
+
+    bool next_rn = false;
+
+    for(int i = 0; i < len;i++)
+    {
+      // Serial.println(data.substring(i,i+1));
+      temp = data.substring(i,i+1);
+
+      if(temp == "+" && i < len - 1)
+      {
+        // Serial.println(data.substring(i+1,i+2));
+        if(data.substring(i+1,i+2) == "8")
+        {
+          msg.number = data.substring(i,i+14);
+        }
+            
+      }
+
+      else if(temp == "\"" && i < len -1)
+      {
+        if(data.substring(i + 1, i + 2) == "\r" && data.substring(i + 2, i + 3) == "\n")
+        {
+          cnt1 = i + 3;
+          next_rn = true;
+          i += 3;
+        }
+        
+      }
+
+      else if(temp == "\r" && i < len -1)
+      {
+        if(data.substring(i + 1, i + 2) == "\n" && next_rn)
+        {
+          cnt2 = i;
+          // Serial.print("Extracted text: ");
+          // Serial.println(data.substring(cnt1, cnt2));
+          next_rn = false;
+        }
+      }
+
+
+        // if(temp == "\n")
+        // {
+        //   Serial.print(i);
+        //   Serial.println(" : *n*");
+        // }
+        // else if(temp == "\r")
+        // {
+        //   Serial.print(i);
+        //   Serial.println(" : *r*");
+        // }
+        // else if(temp == "\"")
+        // {
+        //   Serial.print(i);
+        //   Serial.println(" : *q*");
+        // }
+
+        // else
+        // {
+        //   Serial.print(i);
+        //   Serial.print(" : ");
+        //   Serial.println(temp);
+        // }
+      
+            
+    }
+    msg.text = data.substring(cnt1, cnt2);
+    // Serial.println(msg.number);
+    // Serial.println(msg.text);
+
+    return msg;
 }
 
-//Breakdown the messsage into:
-//
-
-
-String Message_Sender_Number = "";
-String Message_Time_Stamp = "";
-String Message = "";
-
-void Break_Message(String msg)
-{
-    int sender_number_index = 58;//msg.indexOf("+880");
-    int time_stamp_index = sender_number_index + 20; //rough estimate
-    int message_index = time_stamp_index + 20; // rough estimate
-
-    Message_Sender_Number = msg.substring(67, 80);
-    Message_Time_Stamp = msg.substring(87, 106);
-    Message = msg.substring(110);
-}
 
 void reset()
 {
@@ -115,7 +185,7 @@ bool Execute_Command(String Command)
   else if(Command.indexOf("getwater") > -1) // Command looks like ***getwater***
   {
     // send water meter reading
-    Send_Message(String(current_water_meter_reading), Gateway_Number);
+    Send_Message("getwater:" + String(current_water_meter_reading), Gateway_Number);
     return true;
   }
   else if(Command.indexOf("reset") > -1) // Command looks like reset
@@ -128,9 +198,7 @@ bool Execute_Command(String Command)
     return false;
   }
 }
-// this variable will count the meter pulses
-// when a certain amount of water passes, the meter will send a pulse through reed switch
-unsigned long int counter = 0;
+
 
 // // this variable will save the total water flow
 // unsigned long int total_water_flow = 0;
@@ -165,7 +233,7 @@ void setup() {
   delay(1000);
 
   
-  SIM800L.println("AT+CNMI=1,1,0,0,0"); 
+  SIM800L.println("AT+CNMI=1,2,0,0,0"); 
   delay(1000);
   pinMode(Hall_Effect_Sensor_pin, INPUT_PULLUP);
     // pinMode(Reed_Switch_pin, INPUT_PULLUP);
@@ -179,52 +247,28 @@ void setup() {
 
   Serial.println(current_water_meter_reading);
   Serial.println(flow_per_pulse);
-
-  //Send_Message("Hello", "01624593436");
-  // String msg = "";
-  // msg = Read_Message();
-  // Serial.println(msg);
-  // delay(3000);
-  // msg = Read_Message();
-  // Serial.println(msg);
-  // msg = Read_Message();
-  // Serial.println(msg);
-
   
 }
 
-void loop() {
-    // String msg = "";
-    // msg = Read_Message();
-    // for(int i = 0; i< 10; i++)
-    // {
-    //   Serial.print("#");
-    // }
-    // // Serial.println();
-    // // Serial.println(msg);
-    // // msg.replace("\n", "*");
-    // for(int i = 0; i < msg.length(); i++)
-    // {
-    //   Serial.print(i);
-    //   Serial.print(" :");
-    //   Serial.println(msg[i]);
-    // }
-    // //Serial.println(msg);
+void loop() 
+{
+  Message = Receive_Message();
 
-    // // Break_Message(msg);
-    // // Serial.print("Number: ");
-    // // Serial.print(Message_Sender_Number);
-    // // Serial.print(" Time Stamp: ");
-    // // Serial.print(Message_Time_Stamp);
-    // // Serial.print(" Message: ");
-    // // Serial.println(Message);
-    // for(int i = 0; i< 10; i++)
-    // {
-    //   Serial.print("#");
-    // }
-    // Serial.println();
-    
-    // delay(3000);
+  Serial.print("Number: ");
+  Serial.print(Message.number);
+  Serial.print(" Text: ");
+  Serial.println(Message.text);
 
+  // if(new_message)
+  // {
+  //   Serial.print("Received new message!\n");
+  //   Serial.print(Message.number);
+  //   Serial.println(Message.text);
+  // }
+  // else
+  // {
+  //   Serial.println("No new message was received");
+  // }
+  delay(1000);
 }
 
