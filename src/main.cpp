@@ -3,7 +3,23 @@
 #include<EEPROM.h>
 
 
-#define Hall_Effect_Sensor_pin 2
+// This pin is used to indicate different things
+#define Indicator_Led_Pin 7
+bool new_count = false;
+
+void Blink_LED(int number_of_times, int Delay)
+{
+  for(int i = 0; i < number_of_times; i++)
+  {
+    digitalWrite(Indicator_Led_Pin, HIGH);
+    delay(Delay);
+    digitalWrite(Indicator_Led_Pin, LOW);
+    delay(Delay);
+  }
+}
+
+
+#define Hall_Effect_Sensor_pin 3
 // #define Reed_Switch_pin 2
 
 
@@ -36,7 +52,7 @@ String Gateway_Number = "01313791040"; // Number to which all communication will
 SString Message; // this stores the sender's number and the text
 bool new_message = false; //checks if there is a new message
 
-SoftwareSerial SIM800L(9, 8); // new (Rx, Tx) of pro mini
+SoftwareSerial SIM800L(8, 9); // new (Rx, Tx) of pro mini
 
 void Delete_Message(String location)
 {
@@ -51,7 +67,7 @@ void Send_Message(String message, String number)
   SIM800L.println("AT+CMGS=\"+" + number + "\"\r"); 
   delay(1000);
   SIM800L.println(message);
-  delay(100);
+  delay(500);
   SIM800L.println((char)26);
   delay(1000);
 }
@@ -208,6 +224,7 @@ bool Execute_Command(String Command)
     flow_per_pulse = flow_per_pulse_str.toInt();
     EEPROM.put(flow_per_pulse_save_address, flow_per_pulse);
     Serial.println(flow_per_pulse);
+    Send_Message("successfull", Message.number);
     return true;
   }
   else if(Command.indexOf("getwater") > -1) // Command looks like ***getwater***
@@ -222,6 +239,7 @@ bool Execute_Command(String Command)
   else if(Command.indexOf("reset") > -1) // Command looks like reset
   {
     reset();
+    Send_Message("successfull", Message.number);
     return true;
   }
   else
@@ -243,12 +261,14 @@ void pulse_counter()
 {
     static unsigned long last_interrupt_time = 0;
     unsigned long interrupt_time = millis();
-
+    // Serial.println("interrupt activated");
     if(interrupt_time - last_interrupt_time > bounce_time)
     {
         counter++;
         current_water_meter_reading += flow_per_pulse;
-        EEPROM.put(meter_reading_save_address, current_water_meter_reading); 
+        Serial.println(current_water_meter_reading);
+        // EEPROM.put(meter_reading_save_address, current_water_meter_reading); 
+        new_count = true;
     }
 
     last_interrupt_time = interrupt_time;
@@ -269,7 +289,9 @@ void setup() {
   delay(1000);
   pinMode(Hall_Effect_Sensor_pin, INPUT_PULLUP);
     // pinMode(Reed_Switch_pin, INPUT_PULLUP);
-  attachInterrupt(Hall_Effect_Sensor_pin, pulse_counter, FALLING);
+  attachInterrupt(digitalPinToInterrupt(Hall_Effect_Sensor_pin), pulse_counter, FALLING);
+
+  pinMode(Indicator_Led_Pin, OUTPUT);
   // bool check = Execute_Command("meter:1233141");
   // Serial.println(check);
   // check = Execute_Command("flow:100");
@@ -282,11 +304,30 @@ void setup() {
   // Send_Message(String(current_water_meter_reading), "+8801624593436");
   // Serial.println(isValidNumber("1233"));
   // Serial.println(isValidNumber("meter:87428"));
+  // if(SIM800L.available() > 0)
+  // SIM800L.println("AT+CSQ");
+  Blink_LED(5, 500);
   
 }
 
 void loop() 
 {
+  EEPROM.put(meter_reading_save_address, current_water_meter_reading); 
+  // Serial.print("Got pulse? ");
+  // if(digitalRead(Hall_Effect_Sensor_pin) == LOW)
+  // {
+  //   Serial.println("Yes");
+  // }
+  // else
+  // {
+  //   Serial.println("No");
+  // }
+  
+  if(new_count)
+  {
+    Blink_LED(1, 100);
+    new_count = false;
+  }
   Message = Receive_Message();
 
   // Serial.print("Number: ");
@@ -300,8 +341,7 @@ void loop()
     Serial.println(Message.number);
     Serial.println(Message.text);
     bool response = Execute_Command(Message.text);
-    if(response)
-    Send_Message("successfull", Message.number);
+    
   }
   else
   {
