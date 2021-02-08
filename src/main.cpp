@@ -19,8 +19,8 @@ void Blink_LED(int number_of_times, int Delay)
 }
 
 
-#define Hall_Effect_Sensor_pin 3
-// #define Reed_Switch_pin 2
+// #define Hall_Effect_Sensor_pin 3
+#define Reed_Switch_pin 2
 
 
 // this pin will be attached to a wire of which one end will be high
@@ -287,9 +287,9 @@ void setup() {
   
   SIM800L.println("AT+CNMI=1,2,0,0,0"); 
   delay(1000);
-  pinMode(Hall_Effect_Sensor_pin, INPUT_PULLUP);
-    // pinMode(Reed_Switch_pin, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(Hall_Effect_Sensor_pin), pulse_counter, FALLING);
+  // pinMode(Hall_Effect_Sensor_pin, INPUT_PULLUP);
+  pinMode(Reed_Switch_pin, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(Reed_Switch_pin), pulse_counter, FALLING);
 
   pinMode(Indicator_Led_Pin, OUTPUT);
   // bool check = Execute_Command("meter:1233141");
