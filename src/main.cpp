@@ -289,6 +289,8 @@ void setup() {
   delay(1000);
   // pinMode(Hall_Effect_Sensor_pin, INPUT_PULLUP);
   pinMode(Reed_Switch_pin, INPUT_PULLUP);
+  pinMode(3, OUTPUT);
+  digitalWrite(3, HIGH);
   attachInterrupt(digitalPinToInterrupt(Reed_Switch_pin), pulse_counter, FALLING);
 
   pinMode(Indicator_Led_Pin, OUTPUT);
