@@ -2,6 +2,21 @@
 #include<SoftwareSerial.h>
 #include<EEPROM.h>
 
+#define GSM_Reset_Pin 6
+#define Pro_mini_Reset_Pin 13
+
+#define GSM_Reset_Time 12 // hours
+#define Pro_mini_Reset_Time 24 //hours
+// GSM reset must always be smaller than Pro mini reset time
+
+unsigned long current_millis = 0, prev_millis = 0;
+float hour = 0;
+
+float Hours_Now()
+{
+  current_millis = millis();
+  return (current_millis - prev_millis)/3600000;
+}
 
 // This pin is used to indicate different things
 #define Indicator_Led_Pin 7
@@ -27,7 +42,7 @@ void Blink_LED(int number_of_times, int Delay)
 // this is used for detecting if the sensor was cut
 // when the sensor wire is cut, this wire will also be cut
 // thus generating a signal
-#define wire_cut_detect_pin 3
+#define Reed_Switch_Power 3
 
 // this pin will be used for hardware reset
 #define reset_pin 1
@@ -186,6 +201,15 @@ SString Receive_Message()
     return msg;
 }
 
+void Reset_GSM()
+{
+  digitalWrite(GSM_Reset_Pin, LOW);
+}
+
+void Reset_Pro_mini()
+{
+  digitalWrite(Pro_mini_Reset_Pin, LOW);
+}
 
 void reset()
 {
@@ -289,8 +313,13 @@ void setup() {
   delay(1000);
   // pinMode(Hall_Effect_Sensor_pin, INPUT_PULLUP);
   pinMode(Reed_Switch_pin, INPUT_PULLUP);
-  pinMode(3, OUTPUT);
-  digitalWrite(3, HIGH);
+  pinMode(Reed_Switch_Power, OUTPUT);
+  pinMode(GSM_Reset_Pin, OUTPUT);
+  pinMode(Pro_mini_Reset_Pin, OUTPUT);
+
+  digitalWrite(GSM_Reset_Pin, HIGH);
+  digitalWrite(Pro_mini_Reset_Pin, HIGH);
+  digitalWrite(Reed_Switch_Power, HIGH);
   attachInterrupt(digitalPinToInterrupt(Reed_Switch_pin), pulse_counter, FALLING);
 
   pinMode(Indicator_Led_Pin, OUTPUT);
@@ -308,22 +337,13 @@ void setup() {
   // Serial.println(isValidNumber("meter:87428"));
   // if(SIM800L.available() > 0)
   // SIM800L.println("AT+CSQ");
-  Blink_LED(5, 500);
+  Blink_LED(5, 100);
   
 }
 
 void loop() 
 {
   EEPROM.put(meter_reading_save_address, current_water_meter_reading); 
-  // Serial.print("Got pulse? ");
-  // if(digitalRead(Hall_Effect_Sensor_pin) == LOW)
-  // {
-  //   Serial.println("Yes");
-  // }
-  // else
-  // {
-  //   Serial.println("No");
-  // }
   
   if(new_count)
   {
@@ -331,11 +351,6 @@ void loop()
     new_count = false;
   }
   Message = Receive_Message();
-
-  // Serial.print("Number: ");
-  // Serial.print(Message.number);
-  // Serial.print(" Text: ");
-  // Serial.println(Message.text);
 
   if(new_message)
   {
@@ -349,6 +364,17 @@ void loop()
   {
     Serial.println("No new message was received");
   }
-  delay(1000);
+  // delay(1000);
+  hour = Hours_Now();
+
+  if(hour >= GSM_Reset_Time)
+  {
+    Reset_GSM();
+  }
+
+  if(hour >= Pro_mini_Reset_Time)
+  {
+    Reset_Pro_mini();
+  }
 }
 
