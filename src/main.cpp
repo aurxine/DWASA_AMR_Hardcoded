@@ -231,7 +231,7 @@ bool Execute_Command(String Command)
   {
     // send water meter reading
     // Send_Message("getwater:" + String(current_water_meter_reading), Gateway_Number);
-    String msg = "getwater:" + String(current_water_meter_reading);
+    String msg = "getwater:" + String(current_water_meter_reading/1000);
     Serial.println(msg);
     Send_Message(msg, Message.number);
     return true;
