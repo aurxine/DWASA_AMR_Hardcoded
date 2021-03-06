@@ -3,7 +3,7 @@
 #include<EEPROM.h>
 
 #define GSM_Reset_Pin 6
-#define Pro_mini_Reset_Pin 13
+#define Pro_mini_Reset_Pin 12
 
 #define GSM_Reset_Time 12 // hours
 #define Pro_mini_Reset_Time 24 //hours
@@ -204,6 +204,8 @@ SString Receive_Message()
 void Reset_GSM()
 {
   digitalWrite(GSM_Reset_Pin, LOW);
+  delay(500);
+  digitalWrite(GSM_Reset_Pin, HIGH);
 }
 
 void Reset_Pro_mini()
@@ -252,10 +254,10 @@ bool Execute_Command(String Command)
     return true;
   }
   else if(Command.indexOf("getwater") > -1) // Command looks like ***getwater***
-  {
+  { 
     // send water meter reading
     // Send_Message("getwater:" + String(current_water_meter_reading), Gateway_Number);
-    String msg = "getwater:" + String(current_water_meter_reading/1000);
+    String msg = "getwater:" + String(current_water_meter_reading/1000.0);
     Serial.println(msg);
     Send_Message(msg, Message.number);
     return true;
@@ -376,5 +378,6 @@ void loop()
   {
     Reset_Pro_mini();
   }
+  delay(500);
 }
 
