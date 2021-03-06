@@ -356,6 +356,7 @@ void loop()
 
   if(new_message)
   {
+    Blink_LED(2, 100);
     Serial.print("Received new message!\n");
     Serial.println(Message.number);
     Serial.println(Message.text);
